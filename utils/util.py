@@ -234,6 +234,16 @@ def min_max_points(box):
 
     return np.array([[x_min_point, y_min_point], [x_max_point, y_max_point]])
 
+def min_max_points_cnt(box):
+    np_box = np.array(box)
+    x_min_point = int(np.amin(np_box[:, :, 0]))
+    y_min_point = int(np.amin(np_box[:, :, 1]))
+
+    x_max_point = int(np.amax(np_box[:, :, 0]))
+    y_max_point = int(np.amax(np_box[:, :, 1]))
+
+    return np.array([[x_min_point, y_min_point], [x_max_point, y_max_point]])
+
 def init_leaf():
     leaf = {
         "value" : None,
@@ -299,3 +309,48 @@ def get_targets():
     mappings = json.load(f)
     f.close()
     return mappings['labels']
+
+
+def remove_inbound_boxes(box_list):
+    
+    inbound_indicator = [0] * len(box_list)
+    for i, j in zip(range(0,len(box_list)-1), range(1,len(box_list))):
+        inter = intersection(box_list[i],box_list[j])
+        areas = boxes_areas(box_list[i], box_list[j])
+        ratio = min(areas[0],areas[1]) / max(areas[0],areas[1])
+        if inter > 0:
+            result1 = int(inter/areas[0])
+            result2 = int(inter/areas[1])
+            if inbound_indicator[i] != 1:
+                inbound_indicator[i] = result1
+            
+            if inbound_indicator[j] != 1:
+                inbound_indicator[j] = result2
+
+        if ratio < 0.001:
+            if areas[0] > areas[1] and inbound_indicator[j] != 1:
+                inbound_indicator[j] = 1
+            
+            if areas[0] < areas[1] and inbound_indicator[i] != 1:
+                inbound_indicator[i] = 1
+
+    return inbound_indicator
+
+def boxes_areas(box1, box2):
+    box1_area = (box1[1][0] - box1[0][0]) * (box1[1][1] - box1[0][1])
+    box2_area = (box2[1][0] - box2[0][0]) * (box2[1][1] - box2[0][1])
+
+    return box1_area, box2_area
+
+
+
+def intersection(box1, box2):
+
+    x_dist = min(box1[1][0], box2[1][0]) - max(box1[0][0], box2[0][0])
+
+    y_dist = min(box1[1][1], box2[1][1]) - max(box1[0][1], box2[0][1])
+    areaI = 0
+    if x_dist > 0 and y_dist > 0:
+        areaI = x_dist * y_dist
+ 
+    return areaI
